@@ -1,208 +1,307 @@
-# Documentação da API: Teste de Dons
+# IPB "Conecta Dons"
 
-Oct 8, 2026 · @Arthur Vaz
+Plataforma **multi-igrejas** (presbitério) da IPB para **teste de dons**, **gestão pastoral** e
+**alocação de ministérios**. Backend **100% Supabase** (Postgres + RLS + RPC) e frontend **React + Vite**
+que fala direto com o Supabase. Cobre os requisitos RF01–RF14.
 
-## Visão geral
+> Este é o guia principal: arquitetura, **como integrar o backend no frontend**, rodar localmente e
+> **fazer deploy (Supabase + Vercel)**. Detalhes internos do banco estão em [supabase/README.md](supabase/README.md).
 
-O backend é um projeto Supabase que expõe duas funções públicas para o membro responder o formulário e uma view protegida para o admin ver as respostas. O membro nunca acessa as tabelas diretamente.
+---
 
-| Quem | O que faz | Como acessa |
-| --- | --- | --- |
-| Membro (sem login) | Carrega as perguntas e envia as respostas | `rpc('get_questions')` e `rpc('submit_answers')` |
-| Admin (com login) | Cadastra perguntas e vê as respostas | Tabela `questions` e view `admin_answers_detail` |
+## Arquitetura
 
-O site não calcula nem mostra resultado: a análise das respostas é feita por uma pessoa, depois. Cada resposta é uma nota de 1 a 5.
+```
+┌─────────────────────────┐        supabase-js         ┌──────────────────────────────┐
+│  Frontend (React+Vite)  │ ─────────────────────────▶ │  Supabase (Postgres)         │
+│  Vercel                 │   auth · rpc() · from()     │  • Auth (e-mail/senha)       │
+│  - chave ANON pública   │ ◀───────────────────────── │  • RLS multi-tenant          │
+└─────────────────────────┘      dados já filtrados     │  • RPCs (SECURITY DEFINER)   │
+                                 pela RLS por igreja     └──────────────────────────────┘
+```
 
-## Configuração
+- **Não existe servidor de API próprio.** O frontend usa a **chave anon pública** e toda a segurança /
+  isolamento entre igrejas é imposta **no banco** via Row Level Security (RLS).
+- Pastores/admins logam com **Supabase Auth**. Visitantes/membros se cadastram e fazem o teste de dons
+  **sem login**, por um link público com o `slug` da igreja.
 
-Instale o cliente oficial e crie uma única instância compartilhada no app.
+### Stack
+- **Frontend:** React 19, Vite 8, react-router-dom 7, `@supabase/supabase-js` 2.
+- **Backend:** Supabase CLI (migrations versionadas), Postgres 15 + RLS + plpgsql.
+
+### Estrutura do repositório
+```
+supabase/              # backend (migrations, seed, testes) — ver supabase/README.md
+  migrations/0001..0013_*.sql
+  seed.sql
+  tests/smoke.sql
+frontend/              # app React + Vite (branch feature/frontend-core)
+  src/services/supabase.js   # cliente supabase-js
+  src/contexts/AuthContext.jsx
+  src/routes/AppRoutes.jsx
+  vercel.json          # (criar) rewrite SPA p/ react-router
+readme.md              # este arquivo
+```
+
+---
+
+## 1. Rodar o backend localmente
+
+Pré-requisitos: **Docker** rodando e **Node**. O CLI do Supabase roda via `npx` (não precisa instalar global).
 
 ```bash
-npm install @supabase/supabase-js
+npx supabase start            # sobe Postgres + Auth + Studio locais
+npx supabase db reset         # aplica migrations 0001..0013 + seed.sql
+npx supabase status           # mostra URLs e chaves (API URL, anon key, DB URL)
 ```
+
+Teste de fumaça (valida RLS e RPCs ponta a ponta — opcional):
+```bash
+docker exec -i supabase_db_conecta-dons \
+  psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -v ON_ERROR_STOP=1 \
+  < supabase/tests/smoke.sql
+```
+
+Para parar o stack local: `npx supabase stop`.
+
+---
+
+## 2. Configurar o frontend
+
+### 2.1. Variáveis de ambiente (`frontend/.env`)
+
+> ⚠️ A `VITE_SUPABASE_URL` é a **URL base do projeto**, SEM `/rest/v1/` no final. O `supabase-js`
+> monta os caminhos sozinho.
+> A chave `sb_publishable_...` é **pública por design** (protegida pela RLS), por isso pode ficar aqui.
+> **Nunca** coloque a `service_role` / `sb_secret_...` no frontend — ela ignora a RLS.
+
+**Produção (projeto Supabase atual):**
+```bash
+VITE_SUPABASE_URL=https://tfyahgtkxbyshxapibdz.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_gsZkXPaBNRqUZmIdYEyziw_XRFi0vV9
+```
+
+**Desenvolvimento local** (valores de `npx supabase status`):
+```bash
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon/publishable key local>
+```
+
+> O **nome** da variável precisa ser exatamente o mesmo que o cliente lê em `src/services/supabase.js`
+> (ver 2.2). Se preferir manter `VITE_SUPABASE_ANON_KEY`, use esse nome nos dois lugares — o importante
+> é a consistência.
+
+### 2.2. Cliente ([frontend/src/services/supabase.js](frontend/src/services/supabase.js))
 
 ```js
 import { createClient } from '@supabase/supabase-js'
 
 export const supabase = createClient(
-  'https://SEU-PROJETO.supabase.co',  // Project Settings > API > Project URL
-  'SUA_CHAVE_PUBLICA'                 // chave anon ou publishable
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 )
 ```
 
-Use somente a chave pública (anon ou publishable). Nunca coloque a `service_role` no frontend: ela ignora todas as regras de segurança.
+> O código atual do repo lê `VITE_SUPABASE_ANON_KEY`. Troque para `VITE_SUPABASE_PUBLISHABLE_KEY`
+> (mesmo nome usado no `.env` em 2.1) para casar com a chave `sb_publishable_...` do projeto novo.
 
-## Membro: carregar as perguntas
-
-`get_questions` devolve as perguntas ativas, já na ordem de exibição. Não exige login.
-
-```js
-const { data: questions, error } = await supabase.rpc('get_questions')
+### 2.3. Rodar
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-A resposta é uma lista de objetos com `id` e `text`:
+---
 
-```json
-[
-  { "id": "b3f1…", "text": "Gosto de estudar a Bíblia e explicar o que aprendi." },
-  { "id": "9c2a…", "text": "Sinto alegria em ajudar nas tarefas práticas da igreja." }
-]
-```
+## 3. Contrato de uso no frontend
 
-Guarde o `id` de cada pergunta: ele é obrigatório no envio. Lista vazia significa que o admin ainda não cadastrou perguntas ativas.
+Há dois estilos de chamada:
+- **`supabase.rpc('fn', { ... })`** — funções (cadastro público, ações pastorais sensíveis).
+- **`supabase.from('tabela').select()/insert()/update()`** — leitura/escrita direta, **já filtrada pela RLS**
+  conforme as igrejas a que o usuário tem acesso.
 
-## Membro: enviar as respostas
+Toda mensagem de erro de validação do backend vem em **português** em `error.message` — mostre-a ao usuário.
 
-`submit_answers` grava o envio e todas as notas de uma vez. Não exige login e não devolve nenhuma análise.
-
-| Parâmetro | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `p_name` | texto | Sim | Nome de quem respondeu |
-| `p_email` | texto | Não | Envie `null` se estiver vazio |
-| `p_phone` | texto | Não | Envie `null` se estiver vazio |
-| `p_consent` | booleano | Sim | Precisa ser `true` (aceite do uso dos dados, LGPD) |
-| `p_answers` | lista | Sim | Uma entrada para cada pergunta ativa |
-
-Cada item de `p_answers` tem `question_id` (o id recebido em `get_questions`) e `value` (inteiro de 1 a 5, de "discordo totalmente" a "concordo totalmente"). Todas as perguntas ativas precisam ser respondidas, sem repetir nenhuma.
+### 3.1. Autenticação (pastor/admin) — RF01
 
 ```js
-const { data: submissionId, error } = await supabase.rpc('submit_answers', {
+// login
+const { error } = await supabase.auth.signInWithPassword({ email, password })
+// sessão atual / logout
+const { data } = await supabase.auth.getSession()
+await supabase.auth.signOut()
+```
+O [AuthContext](frontend/src/contexts/AuthContext.jsx) já expõe `user`, `session`, `login`, `logout`.
+
+### 3.2. Perfil, Admin Master e seletor de igrejas — RF02/RF04
+
+```js
+// o usuário logado é master?
+const { data: perfil } = await supabase
+  .from('profiles').select('is_master, home_church_id').eq('id', user.id).single()
+
+// igrejas às quais tenho acesso (alimenta o Tenant Switcher da sidebar)
+const { data: igrejas } = await supabase.rpc('my_churches')
+// -> [{ id, name, city, slug, level: 'read' | 'edit' }]
+```
+Guarde no estado a **igreja selecionada** (`churchId`) e filtre as consultas por `.eq('church_id', churchId)`.
+A RLS garante que o usuário só recebe dados das igrejas permitidas; o filtro serve para exibir uma por vez.
+
+### 3.3. Cadastro público + teste de dons (sem login) — RF05/RF06/RF07/RF08
+
+Fluxo da página pública `/{slug}` (ex.: link/QR `https://app.exemplo.com/cadastro/sapucaia`):
+
+```js
+// 1) dados mínimos da igreja pelo slug da URL
+const { data: igreja } = await supabase.rpc('get_church_by_slug', { p_slug: 'sapucaia' })
+
+// 2) cadastro -> devolve { member_id, submit_token } (guarde o token!)
+const { data: reg, error } = await supabase.rpc('register_member', {
+  p_slug: 'sapucaia',
   p_name: 'Maria Silva',
-  p_email: 'maria@email.com',
+  p_email: 'maria@email.com',   // ou null
   p_phone: null,
-  p_consent: true,
-  p_answers: [
-    { question_id: 'b3f1…', value: 4 },
-    { question_id: '9c2a…', value: 5 }
-  ]
+  p_bond: 'comungante',         // 'comungante' | 'nao_comungante' | 'visitante'
+  p_consent: true               // precisa ser true (LGPD)
 })
+const { submit_token } = reg[0]
+
+// 3) perguntas ativas
+const { data: perguntas } = await supabase.rpc('get_gift_questions')
+// -> [{ id, text, sort_order }]
+
+// 4) envio do teste (nota 1..5 por pergunta, todas respondidas, token de uso único)
+const p_answers = perguntas.map(q => ({ question_id: q.id, value: notas[q.id] }))
+await supabase.rpc('submit_gift_test', { p_token: submit_token, p_answers })
 ```
+Não há resultado para exibir ao respondente — mostre apenas um agradecimento. A análise é feita pelo pastor.
 
-No sucesso, `data` é o id do envio (uuid) e `error` é `null`. Mostre uma mensagem de agradecimento: não há resultado para exibir.
-
-## Erros e validações
-
-Se algo estiver errado, `error.message` traz a causa em português. Mostre essa mensagem ao usuário e mantenha o formulário preenchido.
-
-| Mensagem | Causa | O que fazer no frontend |
-| --- | --- | --- |
-| Nome é obrigatório | `p_name` vazio | Exigir o nome antes de enviar |
-| É necessário aceitar o uso dos dados para enviar | `p_consent` diferente de `true` | Exigir o checkbox de aceite |
-| Formato de respostas inválido | `p_answers` não é uma lista | Enviar um array de objetos |
-| Nenhuma pergunta disponível no momento | Não há perguntas ativas | Mostrar aviso e bloquear o envio |
-| Responda todas as perguntas com notas de 1 a 5 | Falta pergunta, nota fora de 1 a 5 ou pergunta repetida | Validar antes: todas respondidas e nota entre 1 e 5 |
-
-Valide no frontend antes de chamar a função, para dar retorno mais rápido; a validação do banco continua valendo como garantia. Se a lista de perguntas mudar enquanto a pessoa preenche, recarregue com `get_questions` e peça para revisar.
-
-## Admin: login
-
-O admin entra com e-mail e senha pelo Supabase Auth. O usuário precisa existir em Authentication > Users e estar cadastrado na tabela `admins` (isso é feito no backend, uma única vez).
+### 3.4. Dashboard pastoral — RF09/RF10/RF11
 
 ```js
-const { error } = await supabase.auth.signInWithPassword({
-  email: 'admin@suaigreja.com',
-  password: 'senha'
-})
+// membros da igreja selecionada
+const { data: membros } = await supabase
+  .from('members').select('*').eq('church_id', churchId).eq('archived', false)
+
+// lista de resgate (inativos/desviados) — RF10
+const { data: resgate } = await supabase
+  .from('members').select('*').eq('church_id', churchId).eq('status', 'inativo_desviado')
+
+// mudar status pastoral — RF09  ('ativo' | 'em_alerta' | 'inativo_desviado' | 'transferido')
+await supabase.from('members').update({ status: 'em_alerta' }).eq('id', memberId)
+
+// histórico confidencial (só pastor com edição na igreja) — RF11
+await supabase.from('pastoral_notes').insert({ member_id, church_id: churchId, body: 'Atendimento...' })
+const { data: notas } = await supabase.from('pastoral_notes').select('*').eq('member_id', memberId)
+
+// visitas de resgate — RF10/RF11
+await supabase.from('pastoral_visits').insert({ member_id, church_id: churchId, scheduled_at })
 ```
 
-Para saber se o usuário logado é admin, consulte a própria linha em `admins`:
+### 3.5. Ministérios e matching — RF14
 
 ```js
-const { data } = await supabase.from('admins').select('user_id').maybeSingle()
-const isAdmin = !!data
+// ministérios e dons requeridos
+const { data: ministerios } = await supabase.from('ministries').select('*').eq('church_id', churchId)
+
+// sugestões (só membros ATIVOS entram) — RF14
+const { data: candidatos } = await supabase.rpc('suggest_members_for_ministry', { p_ministry: ministryId })
+const { data: ministeriosSugeridos } = await supabase.rpc('suggest_ministries_for_member', { p_member: memberId })
+
+// alocar membro num ministério (escala)
+await supabase.from('ministry_assignments').insert({ ministry_id, member_id, church_id: churchId })
 ```
 
-Quem estiver logado mas não for admin recebe listas vazias nas telas abaixo. Trate isso mostrando uma mensagem de acesso negado. Para sair, use `supabase.auth.signOut()`.
-
-## Admin: gerenciar perguntas
-
-Com o admin logado, a tabela `questions` aceita leitura, inclusão, edição e exclusão. Campos: `id`, `text`, `sort_order` (ordem de exibição, menor primeiro), `is_active` (ativa no formulário) e `created_at`.
+### 3.6. Transferência e arquivamento — RF12/RF13
 
 ```js
-// Listar todas (ativas ou não)
-const { data } = await supabase.from('questions').select('*').order('sort_order')
+// destino pode ser qualquer igreja do presbitério (lista dedicada)
+const { data: todas } = await supabase.rpc('list_all_churches')  // [{ id, name, city, slug }]
 
-// Cadastrar
-await supabase.from('questions').insert({ text: 'Nova pergunta', sort_order: 11 })
+await supabase.rpc('request_transfer', { p_member: memberId, p_to_church: destinoId }) // RF12
+await supabase.rpc('accept_transfer',  { p_request: requestId })   // igreja de destino aceita
+await supabase.rpc('reject_transfer',  { p_request: requestId })
 
-// Editar texto ou ordem
-await supabase.from('questions').update({ text: 'Texto novo', sort_order: 3 }).eq('id', id)
-
-// Desativar (some do formulário, mantém as respostas já dadas)
-await supabase.from('questions').update({ is_active: false }).eq('id', id)
+await supabase.rpc('archive_member', { p_member: memberId, p_reason: 'Mudou de cidade' }) // RF13
 ```
 
-Perguntas que já têm respostas não podem ser excluídas: o banco bloqueia. Para retirá-las do formulário, desative com `is_active = false`. Evite reescrever o texto de uma pergunta já respondida, pois isso muda o sentido das respostas antigas; desative-a e crie uma nova.
-
-## Admin: visualizar as respostas
-
-A view `admin_answers_detail` traz uma linha por resposta, já com os dados de quem respondeu e o texto da pergunta.
-
-| Coluna | Descrição |
-| --- | --- |
-| `submission_id` | Id do envio (agrupa as respostas de uma pessoa) |
-| `submitted_at` | Data e hora do envio |
-| `respondent_name` | Nome |
-| `respondent_email` | E-mail (pode ser nulo) |
-| `respondent_phone` | Telefone (pode ser nulo) |
-| `question_order` | Ordem da pergunta |
-| `question_text` | Texto da pergunta |
-| `answer_value` | Nota de 1 a 5 |
+### 3.7. Admin Master — RF02/RF03
 
 ```js
-// Todas as respostas, envios mais recentes primeiro
-const { data } = await supabase
-  .from('admin_answers_detail')
-  .select('*')
-  .order('submitted_at', { ascending: false })
-
-// Respostas de uma pessoa específica
-const { data: pessoa } = await supabase
-  .from('admin_answers_detail')
-  .select('*')
-  .eq('submission_id', submissionId)
-  .order('question_order')
+await supabase.rpc('create_church', { p_name: 'IPB Canoas', p_slug: 'canoas', p_city: 'Canoas' })
+await supabase.rpc('grant_access',  { p_user: userId, p_church: churchId, p_level: 'read' }) // ou 'edit'
+await supabase.rpc('revoke_access', { p_user: userId, p_church: churchId })
 ```
 
-Para a lista de pessoas, agrupe as linhas por `submission_id` no frontend (uma linha por pessoa, com nome e data). O Supabase devolve até 1000 linhas por consulta por padrão: com muitos envios, pagine com `.range(0, 999)`, depois `.range(1000, 1999)` e assim por diante. Para exportar, gere um CSV no frontend a partir de `data`. Para apagar um envio de teste, use `supabase.from('submissions').delete().eq('id', id)`.
+---
 
-## Exemplo completo e checklist
+## 4. Deploy do backend (Supabase hospedado)
 
-Fluxo mínimo do formulário do membro: carregar as perguntas, montar as respostas e enviar.
+1. Crie um projeto em [supabase.com](https://supabase.com) e anote **Project URL** e **anon key**
+   (Project Settings → API) e o **Project Ref**.
+2. Aplique as migrations:
+   ```bash
+   npx supabase link --project-ref <SEU-REF>
+   npx supabase db push          # envia supabase/migrations/*
+   ```
+   > O `db push` **não** envia o `seed.sql`. Para popular os 16 dons / perguntas mock / igreja demo,
+   > rode o conteúdo de `supabase/seed.sql` no **SQL Editor** do painel (opcional em produção).
+3. **Primeiro Admin Master:** crie o usuário em Authentication → Users (o trigger cria o `profiles`),
+   depois promova-o no SQL Editor (como service_role):
+   ```sql
+   update public.profiles set is_master = true,
+          home_church_id = (select id from public.churches where slug = 'sapucaia')
+    where email = 'pastor.master@ipb.org';
+   ```
+4. **Auth → URL Configuration:** em *Site URL* e *Redirect URLs*, adicione a URL da Vercel
+   (ex.: `https://conecta-dons.vercel.app`) para o login funcionar em produção.
 
-```js
-import { supabase } from './supabase.js'
+---
 
-async function carregarFormulario() {
-  const { data: perguntas, error } = await supabase.rpc('get_questions')
-  if (error) return mostrarErro('Não foi possível carregar as perguntas.')
-  renderizar(perguntas) // cada pergunta com opções de 1 a 5
-}
+## 5. Deploy do frontend (Vercel)
 
-async function enviar(form, perguntas) {
-  const respostas = perguntas.map(p => ({
-    question_id: p.id,
-    value: Number(form[`q_${p.id}`].value) // 1 a 5
-  }))
+O app é uma SPA Vite com `react-router` (BrowserRouter) → precisa de **rewrite** para servir `index.html`
+em qualquer rota.
 
-  const { error } = await supabase.rpc('submit_answers', {
-    p_name: form.nome.value.trim(),
-    p_email: form.email.value.trim() || null,
-    p_phone: form.telefone.value.trim() || null,
-    p_consent: form.consentimento.checked,
-    p_answers: respostas
-  })
-
-  if (error) return mostrarErro(error.message)
-  mostrarAgradecimento()
+### 5.1. `frontend/vercel.json` (criar)
+```json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
 ```
 
-Checklist antes de publicar:
+### 5.2. Projeto na Vercel
+1. **Import** do repositório Git na Vercel.
+2. **Root Directory:** `frontend`.
+3. **Framework Preset:** Vite (Build Command `npm run build`, Output Directory `dist` — detectados).
+4. **Environment Variables** (Settings → Environment Variables):
+   | Nome | Valor |
+   |---|---|
+   | `VITE_SUPABASE_URL` | `https://tfyahgtkxbyshxapibdz.supabase.co` |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_gsZkXPaBNRqUZmIdYEyziw_XRFi0vV9` |
+5. **Deploy.** A cada push na branch de produção a Vercel rebuilda.
+6. Volte ao Supabase e confirme que a URL da Vercel está nas **Redirect URLs** (passo 4 da seção 4).
 
-- [ ] Usar só a chave pública (anon ou publishable) no frontend
-- [ ] Bloquear o envio sem nome, sem aceite ou com pergunta sem resposta
-- [ ] Desabilitar o botão durante o envio para evitar envio duplicado
-- [ ] Mostrar só um agradecimento, sem resultado nem pontuação
-- [ ] Proteger as telas de admin: sem login ou sem permissão, mostrar acesso negado
-- [ ] Testar um envio de ponta a ponta e conferir em `admin_answers_detail`
+> As variáveis `VITE_*` são embutidas no bundle em build-time — são **públicas** por natureza (a anon key
+> é pública mesmo). Nada sensível vai para o cliente; a `service_role` nunca entra aqui.
+
+---
+
+## 6. Checklist de publicação
+- [ ] Migrations aplicadas no projeto Supabase (`db push`).
+- [ ] Admin Master criado e promovido (`is_master = true`).
+- [ ] `VITE_SUPABASE_URL` (base, sem `/rest/v1/`) e `VITE_SUPABASE_ANON_KEY` na Vercel.
+- [ ] URL da Vercel nas *Redirect URLs* do Supabase Auth.
+- [ ] `frontend/vercel.json` com o rewrite SPA.
+- [ ] Rotas protegidas (`/dashboard`, `/admin`) exigem sessão; sem login → `/login`.
+- [ ] Página pública de cadastro por `slug` testada ponta a ponta (cadastro → teste → agradecimento).
+- [ ] Usar só a chave anon no frontend.
+
+## 7. Segurança (resumo)
+- RLS em todas as tabelas; `anon` sem acesso direto a nenhuma tabela (só os 4 RPCs públicos).
+- Isolamento entre igrejas e matriz de permissões (read/edit) impostos no banco.
+- Notas/visitas pastorais são confidenciais (só pastor com edição na igreja).
+- Cadastro/teste públicos validam tudo no servidor (consentimento, formato, rate-limit, notas 1–5) e
+  derivam a igreja do `slug`/token — nunca confiam em `church_id`/`member_id` do cliente.
+- Ações privilegiadas (criar igreja, conceder acesso, transferir, arquivar) gravam trilha em `audit_log`.
