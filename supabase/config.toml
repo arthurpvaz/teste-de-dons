@@ -22,10 +22,6 @@ enabled = false
 enabled = true
 port = 54323
 
-[inbucket]
-enabled = true
-port = 54324
-
 [storage]
 enabled = true
 
@@ -34,11 +30,16 @@ enabled = true
 site_url = "http://localhost:5173"
 additional_redirect_urls = ["http://localhost:5173"]
 jwt_expiry = 3600
-enable_signup = true
+# Signup público desabilitado: só o master inicial (criado no painel) e pastores criados
+# pela Edge Function create-pastor (admin API). Membros não têm login.
+enable_signup = false
 
 [auth.email]
-enable_signup = true
 enable_confirmations = false
+
+# Edge Function: o master cadastra pastores pela plataforma (ver functions/create-pastor).
+[functions.create-pastor]
+verify_jwt = true
 
 [analytics]
 enabled = false

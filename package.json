@@ -1,0 +1,8 @@
+{
+  "name": "conecta-dons",
+  "private": true,
+  "description": "Backend Supabase do app Conecta Dons (teste de dons / gestão pastoral multi-tenant).",
+  "scripts": {
+    "test:backend": "bash supabase/tests/run.sh"
+  }
+}

@@ -1,12 +1,7 @@
 -- supabase/tests/smoke.sql
--- Testes de fumaça do backend Conecta Dons. Rodar com o stack local de pé.
--- Via container:
---   docker exec -i supabase_db_conecta-dons psql postgresql://postgres:postgres@127.0.0.1:5432/postgres \
---     -v ON_ERROR_STOP=1 < supabase/tests/smoke.sql
--- Com psql instalado:
---   psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/smoke.sql
---
--- Tudo roda em uma transação e termina em ROLLBACK (não suja o banco).
+-- Suíte de fumaça do backend Conecta Dons. Rode via:  npm run test:backend
+-- (ou manualmente com o stack de pé, ver supabase/TESTING.md).
+-- Roda em transação e termina em ROLLBACK (não altera o banco).
 -- Qualquer assert/FALHOU interrompe e sinaliza erro (ON_ERROR_STOP).
 
 \set ON_ERROR_STOP on
@@ -31,64 +26,68 @@ select id, 'Membro Sapucaia', 'comungante' from public.churches where slug = 'sa
 insert into public.members (church_id, full_name, bond)
 select id, 'Membro Gravatai', 'comungante' from public.churches where slug = 'gravatai';
 
--- =================== 1) FLUXO PÚBLICO (anon): cadastro + teste ===================
-\echo '== 1) Fluxo publico anon =='
+-- =============== 1) FLUXO PÚBLICO: um link + campus + envio combinado ===============
+\echo '== 1) Fluxo publico anon (campus + submit_questionnaire) =='
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 set local role anon;
 
 do $$
-declare v_token text; v_answers jsonb; v_sub uuid;
+declare v_campus uuid; v_answers jsonb; v_member uuid; v_sub uuid; v_qtd int;
 begin
-  -- RF05
-  assert (select count(*) from public.get_church_by_slug('sapucaia')) = 1,
-         'FALHOU: get_church_by_slug nao achou sapucaia';
-  -- RF06: cadastro -> token
-  select submit_token into v_token
-    from public.register_member('sapucaia', 'Maria Dons', 'maria@teste.com', null, 'comungante', true);
-  assert v_token is not null, 'FALHOU: register_member nao devolveu token';
-  -- RF07: responde todas as perguntas ativas (nota 5) e envia
-  select jsonb_agg(jsonb_build_object('question_id', q.id, 'value', 5)) into v_answers
+  -- seletor de campus
+  select id into v_campus from public.list_campuses() where name like 'IPB Sapucaia%' limit 1;
+  assert v_campus is not null, 'FALHOU: list_campuses nao retornou Sapucaia';
+
+  -- devem existir 133 perguntas (19 dons x 7)
+  select count(*) into v_qtd from public.get_gift_questions();
+  assert v_qtd = 133, 'FALHOU: esperava 133 perguntas, veio ' || v_qtd;
+
+  -- responde todas com valor 3 e envia (cria cadastro + submissao numa so chamada)
+  select jsonb_agg(jsonb_build_object('question_id', q.id, 'value', 3)) into v_answers
     from public.get_gift_questions() q;
-  v_sub := public.submit_gift_test(v_token, v_answers);
-  assert v_sub is not null, 'FALHOU: submit_gift_test nao retornou submissao';
-  raise notice 'OK: cadastro + teste de dons enviados (submissao %)', v_sub;
+  select member_id, submission_id into v_member, v_sub
+    from public.submit_questionnaire(v_campus, 'Maria Dons', 'maria@teste.com', null, 'comungante', true, v_answers);
+  assert v_member is not null and v_sub is not null, 'FALHOU: submit_questionnaire nao criou cadastro+submissao';
+  raise notice 'OK: questionario enviado (membro %, submissao %)', v_member, v_sub;
 end $$;
 
--- token invalido deve falhar
+-- valor fora de 0..3 deve falhar
 do $$
+declare v_campus uuid; v_answers jsonb;
 begin
-  perform public.submit_gift_test('token-que-nao-existe', '[]'::jsonb);
-  raise exception 'FALHOU: token invalido deveria ser rejeitado';
-exception when others then
-  if sqlerrm like 'FALHOU:%' then raise; end if;
-  raise notice 'OK: token invalido rejeitado (%)', sqlerrm;
-end $$;
-
--- nota fora de 1..5 deve falhar
-do $$
-declare v_token text; v_answers jsonb;
-begin
-  select submit_token into v_token
-    from public.register_member('sapucaia', 'Joao Nota', null, null, 'visitante', true);
+  select id into v_campus from public.list_campuses() where name like 'IPB Sapucaia%' limit 1;
   select jsonb_agg(jsonb_build_object('question_id', q.id, 'value', 9)) into v_answers
     from public.get_gift_questions() q;
-  perform public.submit_gift_test(v_token, v_answers);
-  raise exception 'FALHOU: nota 9 deveria ser rejeitada';
+  perform public.submit_questionnaire(v_campus, 'Joao Nota', null, null, 'visitante', true, v_answers);
+  raise exception 'FALHOU: valor 9 deveria ser rejeitado';
 exception when others then
   if sqlerrm like 'FALHOU:%' then raise; end if;
-  raise notice 'OK: nota fora de 1..5 rejeitada (%)', sqlerrm;
+  raise notice 'OK: valor fora de 0..3 rejeitado (%)', sqlerrm;
+end $$;
+
+-- respostas incompletas (menos que 133) deve falhar
+do $$
+declare v_campus uuid;
+begin
+  select id into v_campus from public.list_campuses() where name like 'IPB Sapucaia%' limit 1;
+  perform public.submit_questionnaire(v_campus, 'Incompleto', null, null, 'visitante', true, '[]'::jsonb);
+  raise exception 'FALHOU: respostas incompletas deveriam ser rejeitadas';
+exception when others then
+  if sqlerrm like 'FALHOU:%' then raise; end if;
+  raise notice 'OK: respostas incompletas rejeitadas (%)', sqlerrm;
 end $$;
 
 -- consentimento falso deve falhar
 do $$
+declare v_campus uuid;
 begin
-  perform public.register_member('sapucaia', 'Sem Consent', null, null, 'visitante', false);
-  raise exception 'FALHOU: cadastro sem consentimento deveria ser rejeitado';
+  select id into v_campus from public.list_campuses() where name like 'IPB Sapucaia%' limit 1;
+  perform public.submit_questionnaire(v_campus, 'Sem Consent', null, null, 'visitante', false, '[]'::jsonb);
+  raise exception 'FALHOU: sem consentimento deveria ser rejeitado';
 exception when others then
   if sqlerrm like 'FALHOU:%' then raise; end if;
   raise notice 'OK: consentimento exigido (%)', sqlerrm;
 end $$;
-
 reset role;
 
 -- =================== 2) ISOLAMENTO MULTI-TENANT (RLS) ===================
@@ -105,7 +104,6 @@ begin
   raise notice 'OK: pastora A ve % de Sapucaia e 0 de Gravatai', n_sap;
 end $$;
 
--- pastora A NAO consegue se promover a master
 do $$
 begin
   update public.profiles set is_master = true where id = '00000000-0000-0000-0000-00000000a002';
@@ -161,7 +159,6 @@ reset role;
 
 -- =================== 4) TRANSFERENCIA (RF12) ===================
 \echo '== 4) Transferencia interna =='
--- pastora A pede; master aceita. Passamos o id da solicitacao via GUC de sessao.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000a002","role":"authenticated"}', true);
 set local role authenticated;
 select set_config('app.req_id',
@@ -197,10 +194,21 @@ exception when others then
 end $$;
 reset role;
 
--- =================== 5) MATCHING (RF14) + RF10/RF13 ===================
-\echo '== 5) Matching de ministerios (so membros ativos) =='
+-- =================== 5) MATCHING (RF14) + perfil/gráfico + RF10/RF13 ===================
+\echo '== 5) Matching, perfil de dons e exclusao de arquivados =='
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000a002","role":"authenticated"}', true);
 set local role authenticated;
+do $$
+declare v_maria uuid; v_score numeric;
+begin
+  select id into v_maria from public.members
+   where full_name='Maria Dons' and church_id=(select id from public.churches where slug='sapucaia');
+  -- perfil: cada dom = 7 respostas x 3 = 21
+  select score into v_score from public.get_member_gift_profile(v_maria) where gift_code='dom_01';
+  assert v_score = 21, 'FALHOU: soma do dom_01 deveria ser 21, veio ' || coalesce(v_score::text,'null');
+  raise notice 'OK: perfil dom_01 = % (7x3)', v_score;
+end $$;
+
 do $$
 declare n_before int; n_after int; v_louvor uuid; v_maria uuid;
 begin
@@ -223,7 +231,6 @@ reset role;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000a002","role":"authenticated"}', true);
 set local role authenticated;
 
--- pastora A (sede sapucaia) NAO insere membro em gravatai
 do $$
 begin
   insert into public.members (church_id, full_name, bond)
@@ -234,19 +241,16 @@ exception when others then
   raise notice 'OK: insert de membro em igreja alheia bloqueado (%)', sqlerrm;
 end $$;
 
--- pastora A (nao-master) NAO edita a matriz oficial de dons
 do $$
 declare n int;
 begin
-  update public.gifts set name='Hackeado' where code='profecia';
+  update public.gifts set name='Hackeado' where code='dom_01';
   get diagnostics n = row_count;
   assert n = 0, 'FALHOU: nao-master editou a tabela gifts';
   raise notice 'OK: escrita em gifts negada p/ nao-master (linhas=%)', n;
 end $$;
 
--- pastora A NAO escreve direto em church_access (so via grant_access do master)
 do $$
-declare n int;
 begin
   insert into public.church_access (user_id, church_id, level)
   values ('00000000-0000-0000-0000-00000000a002', (select id from public.churches where slug='gravatai'), 'edit');
@@ -256,7 +260,6 @@ exception when others then
   raise notice 'OK: escrita direta em church_access bloqueada (%)', sqlerrm;
 end $$;
 
--- pastora A NAO cria igreja (so master)
 do $$
 begin
   perform public.create_church('Igreja Pirata', 'pirata', 'Lugar Nenhum');
@@ -269,7 +272,6 @@ reset role;
 
 -- =================== 7) CORRECOES DE REVISAO ===================
 \echo '== 7) Correcoes de revisao =='
--- P1: grant 'read' redundante na propria sede NAO rebaixa o pastor (mantem edit).
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000a001","role":"authenticated"}', true);
 set local role authenticated;
 select public.grant_access('00000000-0000-0000-0000-00000000a002',
@@ -285,8 +287,6 @@ begin
   assert n >= 1, 'FALHOU: grant read na sede rebaixou o pastor (perdeu edit)';
   raise notice 'OK: sede mantem edit apesar de grant read (linhas=%)', n;
 end $$;
-
--- P2: troca direta de church_id via UPDATE e bloqueada (so via accept_transfer).
 do $$
 begin
   update public.members set church_id=(select id from public.churches where slug='gravatai')

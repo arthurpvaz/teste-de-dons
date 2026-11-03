@@ -55,12 +55,19 @@ npx supabase db reset         # aplica migrations 0001..0013 + seed.sql
 npx supabase status           # mostra URLs e chaves (API URL, anon key, DB URL)
 ```
 
-Teste de fumaça (valida RLS e RPCs ponta a ponta — opcional):
+Rodar os testes do backend (um comando — sobe o banco, aplica migrations + seed e roda a suíte):
+```bash
+npm run test:backend
+```
+
+Teste de fumaça avulso (opcional, com o stack já de pé):
 ```bash
 docker exec -i supabase_db_conecta-dons \
   psql postgresql://postgres:postgres@127.0.0.1:5432/postgres -v ON_ERROR_STOP=1 \
   < supabase/tests/smoke.sql
 ```
+
+Edge Function localmente (cadastro de pastores): `npx supabase functions serve create-pastor`.
 
 Para parar o stack local: `npx supabase stop`.
 
@@ -150,32 +157,38 @@ A RLS garante que o usuário só recebe dados das igrejas permitidas; o filtro s
 
 ### 3.3. Cadastro público + teste de dons (sem login) — RF05/RF06/RF07/RF08
 
-Fluxo da página pública `/{slug}` (ex.: link/QR `https://app.exemplo.com/cadastro/sapucaia`):
+**Um único link** do questionário. No formulário o membro escolhe o **campus** (igreja), preenche os dados
+e responde as **133 perguntas** (matriz 19 dons × 7 perguntas, nota **0 a 3**). O cadastro do membro nasce
+**junto com o envio** — uma chamada só (`submit_questionnaire`).
 
 ```js
-// 1) dados mínimos da igreja pelo slug da URL
-const { data: igreja } = await supabase.rpc('get_church_by_slug', { p_slug: 'sapucaia' })
+// 1) seletor de campus (lista as igrejas)
+const { data: campi } = await supabase.rpc('list_campuses')
+// -> [{ id, name, city }]
 
-// 2) cadastro -> devolve { member_id, submit_token } (guarde o token!)
-const { data: reg, error } = await supabase.rpc('register_member', {
-  p_slug: 'sapucaia',
+// 2) perguntas ativas (133), em ordem
+const { data: perguntas } = await supabase.rpc('get_gift_questions')
+// -> [{ id, text, sort_order }]
+
+// 3) envio único: cria o cadastro + grava as respostas
+const p_answers = perguntas.map(q => ({ question_id: q.id, value: notas[q.id] })) // value 0..3
+const { data, error } = await supabase.rpc('submit_questionnaire', {
+  p_church_id: campusSelecionadoId,
   p_name: 'Maria Silva',
   p_email: 'maria@email.com',   // ou null
   p_phone: null,
   p_bond: 'comungante',         // 'comungante' | 'nao_comungante' | 'visitante'
-  p_consent: true               // precisa ser true (LGPD)
+  p_consent: true,              // precisa ser true (LGPD)
+  p_answers                     // as 133 respostas (0..3), sem repetir pergunta
 })
-const { submit_token } = reg[0]
-
-// 3) perguntas ativas
-const { data: perguntas } = await supabase.rpc('get_gift_questions')
-// -> [{ id, text, sort_order }]
-
-// 4) envio do teste (nota 1..5 por pergunta, todas respondidas, token de uso único)
-const p_answers = perguntas.map(q => ({ question_id: q.id, value: notas[q.id] }))
-await supabase.rpc('submit_gift_test', { p_token: submit_token, p_answers })
+// data -> [{ member_id, submission_id }]
 ```
-Não há resultado para exibir ao respondente — mostre apenas um agradecimento. A análise é feita pelo pastor.
+Validações (mensagem em PT no `error.message`): consentimento obrigatório, todas as 133 respondidas,
+valores 0–3, campus válido. Não há resultado para o respondente — mostre só um agradecimento; a análise
+(gráfico de dons) é vista pelo pastor.
+
+> **Dons/perguntas provisórios:** hoje são 19 dons `dom_01..dom_19` com 7 perguntas cada (texto provisório),
+> na estrutura final (0–3, score = soma). O conteúdo oficial entra depois por UPDATE/seed, sem mudar o contrato.
 
 ### 3.4. Dashboard pastoral — RF09/RF10/RF11
 
@@ -197,6 +210,10 @@ const { data: notas } = await supabase.from('pastoral_notes').select('*').eq('me
 
 // visitas de resgate — RF10/RF11
 await supabase.from('pastoral_visits').insert({ member_id, church_id: churchId, scheduled_at })
+
+// gráfico de dons do membro — soma por dom (0..21). RF07/RF14
+const { data: perfil } = await supabase.rpc('get_member_gift_profile', { p_member: memberId })
+// -> [{ gift_code, gift_name, score, sort_order }]  (um ponto por dom, pronto p/ o gráfico)
 ```
 
 ### 3.5. Ministérios e matching — RF14
@@ -232,7 +249,20 @@ await supabase.rpc('archive_member', { p_member: memberId, p_reason: 'Mudou de c
 await supabase.rpc('create_church', { p_name: 'IPB Canoas', p_slug: 'canoas', p_city: 'Canoas' })
 await supabase.rpc('grant_access',  { p_user: userId, p_church: churchId, p_level: 'read' }) // ou 'edit'
 await supabase.rpc('revoke_access', { p_user: userId, p_church: churchId })
+
+// cadastrar um novo PASTOR pela plataforma (Edge Function; só o master consegue)
+const { data, error } = await supabase.functions.invoke('create-pastor', {
+  body: {
+    email: 'pastor.novo@ipb.org',
+    full_name: 'Pastor Novo',
+    home_church_id: churchId,                 // opcional: igreja-sede (dá edit nela)
+    grants: [{ church_id: outraIgrejaId, level: 'read' }]  // opcional: acessos cruzados
+  }
+})
+// data -> { user_id, email, temp_password }  (repasse a senha temporária ao pastor)
 ```
+Só o **pastor master** tem signup inicial (criado uma vez no painel); os demais pastores são criados por
+ele via `create-pastor`. Membros **não** têm login — viram registro em `members` pelo questionário público.
 
 ---
 
@@ -243,19 +273,25 @@ await supabase.rpc('revoke_access', { p_user: userId, p_church: churchId })
 2. Aplique as migrations:
    ```bash
    npx supabase link --project-ref <SEU-REF>
-   npx supabase db push          # envia supabase/migrations/*
+   npx supabase db push          # envia supabase/migrations/* (inclui os 19 dons + 133 perguntas)
    ```
-   > O `db push` **não** envia o `seed.sql`. Para popular os 16 dons / perguntas mock / igreja demo,
-   > rode o conteúdo de `supabase/seed.sql` no **SQL Editor** do painel (opcional em produção).
-3. **Primeiro Admin Master:** crie o usuário em Authentication → Users (o trigger cria o `profiles`),
+   > O `db push` **não** envia o `seed.sql` (só dados de demonstração: igrejas e ministérios de exemplo).
+   > Os dons/perguntas são dados de referência e já vão nas migrations. Rode o `seed.sql` no SQL Editor
+   > só se quiser os dados demo.
+3. **Edge Function** (cadastro de pastores pelo master):
+   ```bash
+   npx supabase functions deploy create-pastor
+   ```
+4. **Primeiro Admin Master:** crie o usuário em Authentication → Users (o trigger cria o `profiles`),
    depois promova-o no SQL Editor (como service_role):
    ```sql
    update public.profiles set is_master = true,
           home_church_id = (select id from public.churches where slug = 'sapucaia')
     where email = 'pastor.master@ipb.org';
    ```
-4. **Auth → URL Configuration:** em *Site URL* e *Redirect URLs*, adicione a URL da Vercel
-   (ex.: `https://conecta-dons.vercel.app`) para o login funcionar em produção.
+5. **Auth → URL Configuration:** em *Site URL* e *Redirect URLs*, adicione a URL da Vercel
+   (ex.: `https://conecta-dons.vercel.app`). Em *Providers/Policies*, mantenha o **signup público
+   desabilitado** (só o master inicial + pastores criados via Edge Function).
 
 ---
 
