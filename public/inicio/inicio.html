@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestão Pastoral - Multi-Igrejas IPB</title>
+  <link rel="stylesheet" href="/inicio/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- =================================================================== -->
+    <!-- 1. SIDEBAR & NAVEGAÇÃO                                              -->
+    <!-- =================================================================== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">🏛️ IPB - Conecta Dons</div>
+      
+      <button class="btn-add-church" onclick="openNewChurchModal()">
+        <span>➕ Adicionar Igreja</span>
+      </button>
+
+      <div class="sidebar-section">
+        <ul class="nav-list">
+          <li class="nav-item active" onclick="showDashboard('Geral Presbiterial')">
+            <span>📊 Dashboard Geral</span>
+          </li>
+        </ul>
+      </div>
+
+      <div id="churches-list-container">
+        <!-- O conteúdo desta área é renderizado dinamicamente pelo script.js -->
+      </div>
+    </aside>
+
+    <!-- =================================================================== -->
+    <!-- 2. CONTEÚDO PRINCIPAL                                               -->
+    <!-- =================================================================== -->
+    <main>
+      <header>
+        <div class="header-left">
+          <button class="toggle-btn" onclick="document.getElementById('sidebar').classList.toggle('collapsed')" title="Abrir/Fechar Sidebar">☰</button>
+          <h2 id="view-title">Dashboard Pastoral e Indicadores Gerais</h2>
+        </div>
+      </header>
+
+      <!-- Visão 1: Dashboard -->
+      <div id="dashboard-view">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="label">Total de Membros</div>
+            <div class="number" id="dash-total-members">0</div>
+            <small style="color:var(--text-muted)">Cadastrados na Nuvem</small>
+          </div>
+
+          <div class="kpi-card">
+            <div class="label">Assiduidade Ativa</div>
+            <div class="number" style="color: #166534;">78%</div>
+            <small style="color:var(--text-muted)">Frequência Regular</small>
+          </div>
+
+          <div class="kpi-card">
+            <div class="label">Alertas de Ausência</div>
+            <div class="number" style="color: #991b1b;" id="dash-ausentes-count">0</div>
+            <small style="color:var(--text-muted)">Faltosos / Atenção</small>
+          </div>
+
+          <div class="kpi-card">
+            <div class="label">Sem Ministério</div>
+            <div class="number" style="color: #b45309;" id="dash-sem-min-count">0</div>
+            <small style="color:var(--text-muted)">Aguardando Integração</small>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <!-- Gráfico de Pizza -->
+          <div class="card">
+            <div class="section-title">Distribuição de Dons na Igreja</div>
+            <p style="font-size: 0.8rem; color:var(--text-muted); margin-bottom: 15px;">Mapeamento por quantidade de pessoas em cada dom:</p>
+
+            <div class="pie-wrapper">
+              <div class="canvas-holder">
+                <canvas id="giftsPieChart" width="220" height="220"></canvas>
+              </div>
+              <div id="gifts-legend" class="pie-legend"></div>
+            </div>
+          </div>
+
+          <!-- Saúde Comunitária -->
+          <div class="card">
+            <div class="section-title">Saúde Comunitária (Meios de Graça)</div>
+            <p style="font-size: 0.8rem; color:var(--text-muted); margin-bottom: 15px;">Engajamento nos Cultos e Escola Dominical:</p>
+
+            <div class="bar-group">
+              <div class="bar-label"><span style="color:#166534;">🟢 Ativos e Assíduos</span> <span>78%</span></div>
+              <div class="bar-bg"><div class="bar-fill" style="width: 78%; background:#166534;"></div></div>
+            </div>
+
+            <div class="bar-group" style="margin-top:20px;">
+              <div class="bar-label"><span style="color:#b45309;">🟡 Alerta Ocasionais</span> <span>13%</span></div>
+              <div class="bar-bg"><div class="bar-fill" style="width: 13%; background:#b45309;"></div></div>
+            </div>
+
+            <div class="bar-group" style="margin-top:20px;">
+              <div class="bar-label"><span style="color:#991b1b;">🔴 Ausentes / Inativos</span> <span>9%</span></div>
+              <div class="bar-bg"><div class="bar-fill" style="width: 9%; background:#991b1b;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visão 2: Lista de Membros -->
+      <div id="members-view" style="display: none;">
+        <div class="card">
+          <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:15px;">
+            Clique em qualquer card abaixo para gerenciar o perfil, histórico pastoral e agendar lembretes.
+          </p>
+          <ul class="member-list" id="members-container"></ul>
+        </div>
+      </div>
+
+      <!-- Visão 3: Gestão de Permissões / Login (Abre no espaço central) -->
+      <div id="login-view" style="display: none; width: 100%; height: calc(100vh - 120px);">
+        <iframe src="../login/login.html" style="width: 100%; height: 100%; border: none; background: transparent;"></iframe>
+      </div>
+
+      <!-- Visão 4: Adicionar Membros / Fiel Cadastro -->
+      <div id="cadastro-fiel-view" style="display: none; width: 100%; height: calc(100vh - 120px);">
+        <iframe src="../fiel_Cadastro/fiel_Cadastro.html" style="width: 100%; height: 100%; border: none; background: transparent;"></iframe>
+      </div>
+
+      <!-- Visão 5: Envio de Link do Formulário de Dons -->
+      <div id="envio-formulario-view" style="display: none; width: 100%; height: calc(100vh - 120px);">
+        <iframe src="../envio_Formulario/envio_Formulario.html" style="width: 100%; height: 100%; border: none; background: transparent;"></iframe>
+      </div>
+
+      <!-- Visão 6: Formulário de Dons (133 Perguntas - Abre no espaço central) -->
+      <div id="formulario-dons-view" style="display: none; width: 100%; height: calc(100vh - 120px);">
+        <iframe src="../Formulario__DONS/formulario.html" style="width: 100%; height: 100%; border: none; background: transparent;"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAIS -->
+  <div class="modal-overlay" id="new-church-modal">
+    <div class="modal-container">
+      <button class="modal-close" onclick="closeNewChurchModal()">&times;</button>
+      <div class="section-title" style="font-size:1.1rem; color:var(--primary); margin-bottom:15px;">🏛️ Cadastrar Nova Igreja / Congregação</div>
+      <form onsubmit="handleCreateChurch(event)">
+        <div class="form-group">
+          <label for="church-name">Nome da Igreja / Congregação *</label>
+          <input type="text" id="church-name" placeholder="Ex: IPB Esteio" required>
+        </div>
+        <div class="form-group">
+          <label for="church-city">Cidade / UF</label>
+          <input type="text" id="church-city" placeholder="Ex: Esteio - RS">
+        </div>
+        <button type="submit" class="btn-submit">Criar Igreja</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Perfil Atualizado -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal-container">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <div class="profile-header-modal">
+        <div class="avatar-large" id="modal-avatar">M</div>
+        <div>
+          <h2 id="modal-name" style="color: #0f172a; margin: 0;">Nome do Membro</h2>
+          <p id="modal-role" style="color:var(--text-muted);">Membro Comungante</p>
+          <div style="margin-top:6px;" id="modal-status-badge"></div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div>
+          <div class="form-group" style="margin-bottom:5px;">
+            <label for="modal-select-ministry">Alocar no Ministério:</label>
+            <select id="modal-select-ministry">
+              <option value="Sem Ministério">👤 Sem Ministério</option>
+              <option value="Louvor">🎵 Louvor & Música</option>
+              <option value="Diaconia">🤝 Junta Diaconal</option>
+              <option value="EBD">📖 Escola Dominical</option>
+              <option value="Recepção">🚪 Recepção & Acolhimento</option>
+            </select>
+          </div>
+          <div id="match-suggestion" class="match-box" style="display:none;">
+            <span>💡 Match de Dom: <strong id="match-ministry-name"></strong></span>
+            <button class="btn-apply-match" onclick="applyMatch()">Alocar</button>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Dons Mapeados</div>
+          <div id="modal-gifts" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;"></div>
+          
+          <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <select id="select-novo-dom" style="flex: 1; padding: 5px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.8rem;">
+              <option value="">Adicionar dom...</option>
+              <option value="Ensino">Ensino</option>
+              <option value="Liderança">Liderança</option>
+              <option value="Música">Música</option>
+              <option value="Serviço">Serviço</option>
+              <option value="Diaconia">Diaconia</option>
+              <option value="Hospitalidade">Hospitalidade</option>
+              <option value="Misericórdia">Misericórdia</option>
+              <option value="Evangelismo">Evangelismo</option>
+              <option value="Administração">Administração</option>
+            </select>
+            <button type="button" onclick="adicionarDomModal()" style="background: #0f172a; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Adicionar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Controle de Frequência (Meios de Graça)</div>
+      <div class="attendance-box">
+        <div class="attendance-card">Culto Dominical<span id="att-culto">-</span></div>
+        <div class="attendance-card">EBD<span id="att-ebd">-</span></div>
+        <div class="attendance-card">Reunião de Oração<span id="att-oracao">-</span></div>
+      </div>
+
+      <div class="section-title">Alertas / Vulnerabilidades</div>
+      <div class="box-alert">
+        <ul id="modal-risks"></ul>
+      </div>
+
+      <div class="section-title">🔔 Agendar Acompanhamento (Lembrete To Do)</div>
+      <div class="todo-reminder-box">
+        <label style="font-size:0.85rem; font-weight:bold; color:#1e40af; display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="todo-enable" onchange="toggleTodoFields()"> Ativar lembrete de retorno
+        </label>
+        <div class="todo-row" id="todo-fields" style="display:none;">
+          <div>
+            <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Data:</label>
+            <input type="date" id="todo-date">
+          </div>
+          <div>
+            <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Horário:</label>
+            <input type="time" id="todo-time">
+          </div>
+          <div>
+            <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Recorrência:</label>
+            <select id="todo-repeat">
+              <option value="none">Único (Sem repetição)</option>
+              <option value="weekly">Semanalmente</option>
+              <option value="biweekly">A cada 15 dias</option>
+              <option value="monthly">Mensalmente</option>
+            </select>
+          </div>
+        </div>
+        <div class="todo-actions-bar" id="todo-actions-bar" style="display:none;">
+          <button class="btn-todo-action" onclick="snoozeReminder(15)">⏰ Adiar 15 Min</button>
+          <button class="btn-todo-action" onclick="snoozeReminder(1440)">📅 Adiar 1 Dia</button>
+          <button class="btn-todo-action" onclick="exportToCalendar()">📆 Exportar p/ Agenda (.ics)</button>
+          <button class="btn-todo-action" style="color:#166534; border-color:#bbf7d0;" onclick="completeReminder()">✅ Marcar Concluído</button>
+        </div>
+      </div>
+
+      <div class="section-title">📜 Histórico Pastoral de Atendimentos</div>
+      <div class="add-history-box">
+        <div style="display:flex; gap:10px;">
+          <select id="new-history-category" style="width:40%;">
+            <option value="Aconselhamento">🗣️ Aconselhamento</option>
+            <option value="Visita Doméstica">🏠 Visita Doméstica</option>
+            <option value="Visita Hospitalar">🏥 Visita Hospitalar</option>
+            <option value="Discipulado">📖 Discipulado</option>
+            <option value="Ligação/Mensagem">📞 Ligação/Mensagem</option>
+          </select>
+          <input type="text" id="new-history-text" placeholder="Anotação pastoral do atendimento..." style="flex:1;">
+        </div>
+        <button class="btn-submit" style="margin-top:0; padding:8px;" onclick="addHistoryEntry()">Adicionar Registro ao Histórico</button>
+      </div>
+
+      <div class="timeline" id="modal-timeline"></div>
+      
+      <button class="btn-submit" style="background: #166534; color: #e0e7ff; margin-top: 15px;" onclick="saveMemberProfile()">Salvar Alterações do Perfil</button>
+    </div>
+  </div>
+
+  <script src="/supabase-config.js"></script>
+  <script type="module" src="/inicio/script.js"></script>
+</body>
+</html>

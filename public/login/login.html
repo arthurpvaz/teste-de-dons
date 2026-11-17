@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - IPB</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+  <div class="fundo">
+    <div class="login-container">
+      <h1>Bem-vindo</h1>
+      <p>Login do Pastor</p>
+      <form id="form-login">
+        <label for="nome">E-mail:</label>
+        <input type="text" id="nome" name="nome" type="email" required>
+
+        <label for="senha">Senha:</label>
+        <input type="password" id="senha" name="senha" required>
+
+        <button type="submit">Entrar</button>
+        <br>
+        <br>
+        <button id="voltar">Voltar</button>
+      </form>
+    </div>
+  </div>
+  <script src="../supabase-config.js"></script>
+  <script type="module" src="login.js"></script>
+</body>
+</html>

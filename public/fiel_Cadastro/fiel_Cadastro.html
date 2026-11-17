@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPB - Mapeamento de Dons e Ficha de Membro</title>
+
+  <style>
+    :root {
+      --primary: #00563B;
+      --primary-hover: #003d29;
+      --bg: #f8fafc;
+      --text: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+
+    /* BARRA SUPERIOR */
+    .navbar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--primary);
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .navbar-esquerda {
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    /* NOME DA IGREJA E BOTÃO SAIR */
+    .navbar-direita {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 18px;
+    }
+
+    .bem-vindo-admin {
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .btn-sair {
+      background: #dc2626;
+      color: white;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .btn-sair:hover {
+      background: #b91c1c;
+    }
+
+    /* CARTÃO DO FORMULÁRIO */
+    .form-card {
+      background: white;
+      width: 100%;
+      max-width: 500px;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 15px;
+    }
+
+    .header h2 {
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group > label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    input:focus,
+    select:focus {
+      outline: 2px solid #86bca7;
+      outline-offset: 1px;
+    }
+
+    /* OPÇÕES DE DONS */
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 5px;
+    }
+
+    .checkbox-item {
+      background: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+
+    .checkbox-item input {
+      accent-color: var(--primary);
+    }
+
+    /* BOTÃO ENVIAR CADASTRO */
+    .btn-submit {
+      background: var(--primary);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    /* AJUSTES PARA CELULARES */
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+
+      .navbar {
+        padding: 10px;
+      }
+
+      .navbar-direita {
+        gap: 10px;
+      }
+
+      .bem-vindo-admin {
+        font-size: 0.82rem;
+      }
+
+      .form-card {
+        padding: 18px;
+      }
+
+      .checkbox-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body class="cadastro-administrador">
+
+  <!-- BARRA SUPERIOR -->
+  <nav class="navbar">
+    <div class="navbar-esquerda" id="info-igreja-ativa">
+      🏛️ Igreja: Carregando...
+    </div>
+    <div class="navbar-direita">
+      <a href="#" class="btn-sair" id="voltar" onclick="return voltar()">
+        Voltar 
+      </a>
+    </div>
+  </nav>
+
+  <!-- FORMULÁRIO DE CADASTRO -->
+  <div class="form-card">
+    <div class="header">
+      <h2>🏛️ IPB - Cadastro &amp; Dons</h2>
+      <p style="font-size: 0.85rem; color: #64748b;" id="subtitulo-igreja">
+        Preencha os dados do membro para integração comunitária
+      </p>
+    </div>
+
+    <form id="public-form">
+      <div class="form-group">
+        <label for="name">Nome Completo *</label>
+        <input
+          type="text"
+          id="name"
+          placeholder="Ex: João da Silva"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" placeholder="joao@email.com">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">WhatsApp / Telefone *</label>
+        <input
+          type="tel"
+          id="phone"
+          placeholder="(51) 99999-9999"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="role">Vínculo com a Igreja</label>
+        <select id="role">
+          <option value="Membro Comungante">Membro Comungante</option>
+          <option value="Membro Não-Comungante">Membro Não-Comungante</option>
+          <option value="Congregante / Visitante">Congregante / Visitante</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <p style="font-size:0.82rem;color:#64748b;background:#f1f5f9;padding:10px;border-radius:6px;">Os dons são calculados pelo questionário oficial de 133 perguntas. Depois do cadastro, envie o link do teste ao membro.</p>
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-save">
+        Enviar Cadastro
+      </button>
+    </form>
+  </div>
+
+  <script src="../supabase-config.js"></script>
+  <script type="module">
+    import { supabase } from '../supabase-client.js';
+
+    let churches = [];
+    async function carregarIgrejas() {
+      const { data, error } = await supabase.rpc('my_churches');
+      if (error) { alert(`Não foi possível carregar as igrejas: ${error.message}`); return; }
+      churches = data || [];
+      const nomeSalvo = localStorage.getItem('igrejaSelecionada');
+      const church = churches.find(c => c.name === nomeSalvo) || churches[0];
+      if (church) {
+        localStorage.setItem('igrejaSelecionada', church.name);
+        document.getElementById('info-igreja-ativa').textContent = `🏛️ ${church.name}`;
+        document.getElementById('subtitulo-igreja').textContent = `Cadastro vinculado a ${church.name}`;
+      }
+    }
+
+    document.getElementById('public-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const churchName = localStorage.getItem('igrejaSelecionada');
+      const church = churches.find(c => c.name === churchName);
+      if (!church) return alert('Selecione uma igreja válida antes de cadastrar.');
+      const bondMap = { 'Membro Comungante':'comungante', 'Membro Não-Comungante':'nao_comungante', 'Congregante / Visitante':'visitante' };
+      const btn=document.getElementById('btn-save');btn.disabled=true;btn.textContent='Enviando...';
+      try {
+        const { error } = await supabase.from('members').insert({
+          church_id: church.id,
+          full_name: document.getElementById('name').value.trim(),
+          email: document.getElementById('email').value.trim() || null,
+          phone: document.getElementById('phone').value.trim() || null,
+          bond: bondMap[document.getElementById('role').value] || 'visitante',
+          status: 'ativo',
+          consent: true,
+          consent_at: new Date().toISOString()
+        });
+        if (error) throw error;
+        alert(`Cadastro enviado com sucesso para ${church.name}!`);
+        e.target.reset();
+      } catch(err) {
+        console.error(err); alert(`Erro ao cadastrar: ${err.message || 'erro desconhecido'}`);
+      } finally { btn.disabled=false;btn.textContent='Enviar Cadastro'; }
+    });
+
+    document.getElementById('voltar')?.addEventListener('click', e => {
+      e.preventDefault();
+      if(window.parent && typeof window.parent.voltarParaDashboard === 'function') window.parent.voltarParaDashboard();
+      else window.location.href='../inicio/inicio.html';
+    });
+    carregarIgrejas();
+  </script>
+
+</body>
+</html>

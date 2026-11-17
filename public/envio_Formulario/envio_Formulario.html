@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Link do Formulário - IPB Conecta Dons</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="envio_Formulario.css">
+</head>
+<body class="text-slate-800 font-sans min-h-screen flex flex-col justify-between">
+
+    <!-- Cabeçalho -->
+    <!-- Cabeçalho -->
+    <header id="cabecario" class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-emerald-600 text-white rounded-lg">
+                    <i class="fa-solid fa-paper-plane text-xl"></i>
+                </div>
+                <div>
+                    <h1 id="titulo" class="text-lg font-bold text-slate-900 leading-tight">Disparar Formulário</h1>
+                    <p id="sub_Titulo" class="text-xs text-slate-500">Envio de Link de Acesso</p>
+                </div>
+            </div>
+            <!-- Botão com integração via iframe para alternar a visão no painel principal -->
+            <button type="button" onclick="if(window.parent && window.parent.showFormularioDonsView) { window.parent.showFormularioDonsView(); }" class="text-xs font-semibold bg-white/10 text-white px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/20 transition flex items-center cursor-pointer">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Ir para o Formulário
+            </button>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="max-w-xl mx-auto px-4 py-10 flex-grow w-full">
+
+        <div id="intro-card" class="rounded-2xl shadow-md p-6 sm:p-8 mb-6">
+            <h2 class="text-xl font-bold text-white mb-2">Enviar Formulário por E-mail</h2>
+            <p class="text-white/90 text-sm mb-6 leading-relaxed">
+                Preencha os dados abaixo para enviar o link da <strong>Avaliação de Dons Espirituais</strong> diretamente para o e-mail de um membro ou interessado.
+            </p>
+
+            <!-- Alerta de Feedback -->
+            <div id="feedback-alert" class="hidden mb-6 p-4 rounded-xl text-sm flex items-center justify-between">
+                <span id="feedback-message"></span>
+                <button onclick="hideFeedbackAlert()" class="font-bold ml-4">&times;</button>
+            </div>
+
+            <form id="send-form" onsubmit="handleSendEmail(event)" class="space-y-4">
+                <div>
+                    <label for="destinatario-email" class="block text-xs font-bold uppercase text-white mb-1">E-mail do Destinatário *</label>
+                    <input type="email" id="destinatario-email" required placeholder="exemplo@email.com" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                </div>
+
+                <div>
+                    <label for="email-subject" class="block text-xs font-bold uppercase text-white mb-1">Assunto da Mensagem *</label>
+                    <input type="text" id="email-subject" required value="Convite: Avaliação de Dons Espirituais - IPB" class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+                </div>
+
+                <div>
+                    <label for="form-campus" class="block text-xs font-bold uppercase text-white mb-1">Campus da Igreja *</label>
+                    <select id="form-campus" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm"><option value="">Carregando...</option></select>
+                </div>
+
+                <div>
+                    <label for="form-link" class="block text-xs font-bold uppercase text-white mb-1">Link do Formulário *</label>
+                    <div class="flex space-x-2">
+                        <input type="url" id="form-link" required class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-800 bg-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none text-sm" readonly>
+                        <button type="button" onclick="copyLinkForm()" title="Copiar Link" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg border border-white/30 transition text-sm">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="email-message" class="block text-xs font-bold uppercase text-white mb-1">Mensagem Personalizada</label>
+                    <textarea id="email-message" rows="4" placeholder="Adicione uma mensagem amigável convidando a pessoa para preencher o questionário..." class="w-full px-4 py-2.5 rounded-lg border border-slate-300 text-slate-800 bg-white focus:ring-2 focus:ring-emerald-500 outline-none text-sm">Olá! A paz do Senhor. Por favor, acesse o link abaixo para responder à nossa Avaliação de Dons Espirituais. É rápido e muito importante para nossa caminhada pastoral.</textarea>
+                </div>
+
+                <div class="pt-4 flex flex-col sm:flex-row gap-3">
+                    <button type="submit" class="flex-1 py-3 rounded-xl font-bold text-emerald-900 bg-white hover:bg-emerald-50 transition text-sm shadow-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>Disparar E-mail</span>
+                    </button>
+                    <button type="button" onclick="openMailClient()" class="py-3 px-5 rounded-xl font-semibold text-white bg-emerald-800 hover:bg-emerald-900 border border-emerald-700 transition text-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-envelope-open-text"></i>
+                        <span>Abrir App de E-mail</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+
+    <!-- Rodapé simples -->
+    <footer class="text-center py-4 text-xs text-slate-500">
+        Sistema de Gestão Pastoral - IPB &copy; 2026
+    </footer>
+
+    <script src="../supabase-config.js"></script>
+    <script type="module" src="envio_Formulario.js"></script>
+</body>
+</html>

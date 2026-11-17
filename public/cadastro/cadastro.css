@@ -1,0 +1,214 @@
+
+/* ==============================
+   CONFIGURAÇÕES GERAIS
+============================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: linear-gradient(
+        135deg,
+        #dcefe5,
+        #a9cbb9,
+        #6d9c83
+    );
+}
+
+/* ==============================
+   CONTAINER PRINCIPAL 3D
+============================== */
+
+main {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 430px;
+
+    padding: 40px 35px;
+
+    background: linear-gradient(
+        145deg,
+        #ffffff,
+        #e7f1eb
+    );
+
+    border-radius: 22px;
+
+    box-shadow:
+        12px 12px 25px rgba(0, 0, 0, 0.20),
+        -8px -8px 20px rgba(255, 255, 255, 0.85),
+        inset 1px 1px 3px rgba(255, 255, 255, 0.9);
+
+    transform: perspective(1000px) rotateX(2deg);
+
+    transition: 0.4s;
+}
+
+.container:hover {
+    transform: perspective(1000px) rotateX(0deg) translateY(-5px);
+
+    box-shadow:
+        16px 18px 30px rgba(0, 0, 0, 0.22),
+        -8px -8px 20px rgba(255, 255, 255, 0.9);
+}
+
+/* ==============================
+   TÍTULO
+============================== */
+
+.title {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+
+    color: #075b3d;
+
+    margin-bottom: 35px;
+
+    text-shadow:
+        2px 2px 2px rgba(0, 0, 0, 0.12);
+
+    letter-spacing: 1px;
+}
+
+/* ==============================
+   CAMPOS DE ENTRADA
+============================== */
+
+.input {
+    margin-bottom: 24px;
+}
+
+.input label {
+    display: block;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    color: #245c43;
+
+    margin-bottom: 9px;
+}
+
+.input input {
+    width: 100%;
+    height: 48px;
+
+    padding: 0 15px;
+
+    border: none;
+    outline: none;
+
+    border-radius: 12px;
+
+    background: #edf4ef;
+
+    color: #173d2b;
+
+    font-size: 15px;
+
+    box-shadow:
+        inset 4px 4px 8px rgba(0, 0, 0, 0.12),
+        inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+
+    transition: 0.3s;
+}
+
+.input input:focus {
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 2px #27845b,
+        0 0 12px rgba(39, 132, 91, 0.25);
+}
+
+/* ==============================
+   BOTÕES 3D
+============================== */
+
+button {
+    width: 100%;
+    height: 48px;
+
+    margin-top: 13px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: linear-gradient(
+        145deg,
+        #168653,
+        #075332
+    );
+
+    color: white;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 6px 0 #043c25,
+        0 10px 15px rgba(0, 0, 0, 0.20);
+
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    background: linear-gradient(
+        145deg,
+        #219d65,
+        #087044
+    );
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 0 #043c25,
+        0 13px 18px rgba(0, 0, 0, 0.22);
+}
+
+button:active {
+    transform: translateY(5px);
+
+    box-shadow:
+        0 1px 0 #043c25,
+        0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* ==============================
+   RESPONSIVIDADE
+============================== */
+
+@media (max-width: 480px) {
+
+    .container {
+        padding: 30px 22px;
+    }
+
+    .title {
+        font-size: 27px;
+    }
+
+    button {
+        height: 46px;
+    }
+}
+

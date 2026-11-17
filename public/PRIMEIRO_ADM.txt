@@ -1,0 +1,15 @@
+1- ABRIR MONGODB;
+
+2- ADD DATA;
+
+3- INSERT DOCUMENT;
+
+4- COLAR:
+
+{
+  "_id": "6a53f639fabcdd215898a0b6",
+  "customId": 1,
+  "nome": "Fernando",
+  "senha": "123456",
+  "celular": "51991558374"
+}

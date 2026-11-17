@@ -1,0 +1,264 @@
+/* =================================
+   CONFIGURAÇÕES GERAIS
+================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+}
+
+/* =================================
+   FUNDO
+================================= */
+
+.fundo {
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 20px;
+
+    background: linear-gradient(
+        135deg,
+        #d8f0e8,
+        #9bcfc1,
+        #397f83,
+        #174b58
+    );
+
+    background-size: 300% 300%;
+}
+
+/* =================================
+   CARTÃO DE LOGIN 3D
+================================= */
+
+.login-container {
+    width: 100%;
+    max-width: 420px;
+
+    padding: 45px 38px;
+
+    background: linear-gradient(
+        145deg,
+        #ffffff,
+        #e8f3ef
+    );
+
+    border-radius: 24px;
+
+    text-align: center;
+
+    border: 1px solid rgba(255,255,255,0.8);
+
+    box-shadow:
+        15px 15px 30px rgba(0,0,0,0.25),
+        -8px -8px 25px rgba(255,255,255,0.35),
+        inset 2px 2px 5px rgba(255,255,255,0.9);
+
+    transform: perspective(1000px) rotateX(2deg);
+
+    transition: 0.4s ease;
+}
+
+.login-container:hover {
+    transform: perspective(1000px) rotateX(0deg) translateY(-5px);
+
+    box-shadow:
+        18px 20px 35px rgba(0,0,0,0.28),
+        -8px -8px 25px rgba(255,255,255,0.4);
+}
+
+/* =================================
+   TÍTULO
+================================= */
+
+.login-container h1 {
+    font-size: 34px;
+    font-weight: 800;
+
+    color: #12634c;
+
+    margin-bottom: 10px;
+
+    text-shadow:
+        2px 2px 3px rgba(0,0,0,0.15);
+}
+
+.login-container p {
+    font-size: 17px;
+
+    color: #527568;
+
+    font-weight: 600;
+
+    margin-bottom: 32px;
+}
+
+/* =================================
+   LABELS
+================================= */
+
+form {
+    text-align: left;
+}
+
+form label {
+    display: block;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    color: #245c49;
+
+    margin-bottom: 9px;
+}
+
+/* =================================
+   CAMPOS DE TEXTO
+================================= */
+
+form input {
+    width: 100%;
+    height: 50px;
+
+    padding: 0 15px;
+
+    margin-bottom: 23px;
+
+    border: none;
+    outline: none;
+
+    border-radius: 12px;
+
+    background: #edf5f0;
+
+    color: #244b3b;
+
+    font-size: 15px;
+
+    box-shadow:
+        inset 4px 4px 8px rgba(0,0,0,0.13),
+        inset -4px -4px 8px rgba(255,255,255,0.95);
+
+    transition: 0.3s;
+}
+
+form input:focus {
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 2px #25865f,
+        0 0 12px rgba(37,134,95,0.25);
+}
+
+/* =================================
+   BOTÕES 3D
+================================= */
+
+form button {
+    width: 100%;
+    height: 49px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: linear-gradient(
+        145deg,
+        #168b61,
+        #07543e
+    );
+
+    color: #ffffff;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 6px 0 #063d2d,
+        0 10px 16px rgba(0,0,0,0.20);
+
+    transition: all 0.2s ease;
+}
+
+/* Efeito ao passar o mouse */
+
+form button:hover {
+    background: linear-gradient(
+        145deg,
+        #21a875,
+        #08704e
+    );
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 9px 0 #063d2d,
+        0 14px 20px rgba(0,0,0,0.22);
+}
+
+/* Efeito ao clicar */
+
+form button:active {
+    transform: translateY(5px);
+
+    box-shadow:
+        0 1px 0 #063d2d,
+        0 3px 6px rgba(0,0,0,0.15);
+}
+
+/* =================================
+   BOTÃO VOLTAR
+================================= */
+
+form button[type="button"] {
+    background: linear-gradient(
+        145deg,
+        #397c91,
+        #205365
+    );
+
+    box-shadow:
+        0 6px 0 #173e4b,
+        0 10px 16px rgba(0,0,0,0.20);
+}
+
+form button[type="button"]:hover {
+    background: linear-gradient(
+        145deg,
+        #4b98ad,
+        #28677c
+    );
+}
+/* =================================
+   RESPONSIVIDADE
+================================= */
+
+@media (max-width: 480px) {
+
+    .login-container {
+        padding: 35px 23px;
+    }
+
+    .login-container h1 {
+        font-size: 29px;
+    }
+
+    .login-container p {
+        font-size: 15px;
+    }
+
+    form button {
+        height: 46px;
+    }
+}

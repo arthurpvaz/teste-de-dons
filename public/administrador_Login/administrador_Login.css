@@ -1,0 +1,84 @@
+/* login.css */
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.fundo {
+  background-image: url('https://images.unsplash.com/photo-1506836467174-27f1042aa48c?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* imagem de natureza */
+  background-size: cover;
+  background-position: center;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-container {
+  background-color: rgba(178, 230, 230, 0.826);
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.2);
+  width: 300px;
+  text-align: center;
+}
+
+.login-container h1 {
+  margin-bottom: 10px;
+  color: #000000;
+}
+
+.login-container p {
+  margin-bottom: 20px;
+  color: #000000;
+  font-weight: 900;
+  font-size: 1.2rem;
+  font-family: 'Arial Black', Impact, sans-serif;
+  
+}
+
+.login-container input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.login-container button {
+  background-color: #00695c;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.login-container button:hover {
+  background-color: #004d40;
+}
+
+
+.botoes {
+  margin-top: 15px;
+  text-align: center;
+}
+
+botoes button {
+  background-color: #4caf50; /* verde tranquilo */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin: 5px;
+}
+
+.botoes button:hover {
+  background-color: #388e3c; /* tom mais escuro no hover */
+}

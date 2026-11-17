@@ -1,0 +1,26 @@
+FORMULÁRIO DE DONS — COMO USAR
+
+1. Extraia os arquivos para uma pasta.
+2. Abra index.html em um navegador moderno.
+3. O formulário funciona localmente, sem servidor e sem banco de dados.
+4. São 133 perguntas, 10 por página (a última página tem 3).
+5. A navegação exige responder às perguntas da página atual.
+6. Ao enviar, o navegador mostra a pontuação por área e as áreas com maiores pontuações.
+
+ARQUIVOS
+- formulario.html: estrutura do formulário.
+- style.css: aparência e responsividade.
+- formulario.js: perguntas, navegação, validação e cálculo.
+
+OBSERVAÇÃO 1:
+As 133 afirmações foram redigidas para este formulário a partir dos temas gerais de dons e serviço presentes no
+ material enviado e dos sete dons mostrados na imagem. Elas não são uma transcrição de 133 perguntas 
+do PDF, pois o PDF apresenta a escala e a grade numerada, mas não traz o texto dessas 133 perguntas. O resultado é 
+uma ferramenta de reflexão, não uma avaliação psicológica ou diagnóstico definitivo.
+
+OBSERVAÇÃO 2:
+AS PERGUNTAS FORAM CRIADAS PARA TESTE (FORMULÁRIO EM CONSTRUÇÃO).
+
+
+
+

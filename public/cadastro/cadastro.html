@@ -1,0 +1,44 @@
+<!--CRIAR ANTES DENTRO DA PASTA PUBLIC UMA PASTA CHAMADA inicio E AÍ SIM COLOCAR TODAS ESSAS PASTAS DENTRO DESSA MESMA -->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projeto</title>
+  <link rel="stylesheet" href="cadastro.css" />
+</head>
+<body>
+  <main>
+    <div class="container">
+      <div class="title">Cadastro</div>
+
+      <div class="input">
+        <label for="nomeInput1">nome</label>
+        <input type="text" id="nome" />
+      </div>
+
+      <div class="input">
+        <label for="senha">senha</label>
+        <input type="password" id="senha" step="0.01" />
+      </div>
+
+      <div class="input">
+        <label for="redigitaSenha">Redigitar Senha</label>
+        <input type="password" id="redigitar_Senha" step="0.1" />
+      </div>
+
+      
+      <button id="salvar">Salvar</button>
+      <button id="voltar">Voltar</button>
+
+
+
+     
+    </div>
+  </main>
+
+  <script src="../supabase-config.js"></script>
+  <script type="module" src="cadastro.js"></script>
+</body>
+</html>
